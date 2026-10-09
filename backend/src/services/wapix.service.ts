@@ -60,9 +60,33 @@ export async function sendWapixOtp(phone: string, code: string) {
 
   if (!response.ok || explicitlyFailed) {
     // Never log the request body: it contains the API key and OTP.
-    console.error("Wapix request rejected", {
-      httpStatus: response.status,
-    });
+        const details =
+        result !== null && typeof result === "object"
+            ? result as Record<string, unknown>
+            : {};
+
+        function redact(value: unknown): string {
+        let text = typeof value === "string"
+            ? value
+            : JSON.stringify(value) ?? "";
+
+        for (const secret of [apiKey, phone, phone.replace(/^\+/, ""), code]) {
+            if (secret) text = text.split(secret).join("[REDACTED]");
+        }
+
+        return text
+            .replace(/WAPIX\.[A-Za-z0-9._-]+/gi, "[REDACTED]")
+            .replace(/\d{6,}/g, "[REDACTED]")
+            .slice(0, 500);
+        }
+
+        console.error("Wapix request rejected", {
+        httpStatus: response.status,
+        success: redact(details.success),
+        status: redact(details.status),
+        message: redact(details.message),
+        error: redact(details.error),
+        });
 
     throw new ApiError(
       502,
