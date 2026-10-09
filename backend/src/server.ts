@@ -16,7 +16,7 @@ async function start() {
 
   await initializeModels();
 
-  const server = app.listen(port, '127.0.0.1', 
+  const server = app.listen(port, "0.0.0.0", 
     
     () => console.log(`Development API: http://127.0.0.1:${port}; FAKE OTP enabled`
 
