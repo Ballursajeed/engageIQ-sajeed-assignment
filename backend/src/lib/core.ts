@@ -7,12 +7,21 @@ export class ApiError extends Error {
 }
 
 export function fakeMode() {
+  const local = ["development", "test"].includes(
+    process.env.NODE_ENV ?? "",
+  );
 
-  if (process.env.OTP_MODE !== 'fake' || !['development', 'test'].includes(process.env.NODE_ENV ?? '')) {
-    throw new Error('This build requires OTP_MODE=fake and NODE_ENV=development or test. Live delivery is not implemented.');
+  const publicDemo =
+    process.env.NODE_ENV === "production" &&
+    process.env.ALLOW_DEMO_OTP === "true";
+
+  if (process.env.OTP_MODE !== "fake" || (!local && !publicDemo)) {
+    throw new Error("Fake OTP requires local testing or explicit demo mode");
   }
-  
-  if (!process.env.OTP_SECRET || process.env.OTP_SECRET.length < 32) throw new Error('OTP_SECRET must contain at least 32 characters');
+
+  if (!process.env.OTP_SECRET || process.env.OTP_SECRET.length < 32) {
+    throw new Error("OTP_SECRET must contain at least 32 characters");
+  }
 }
 
 export const token = () => randomBytes(32).toString('hex');
