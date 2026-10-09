@@ -18,6 +18,7 @@ import {
   str,
   phone,
   email,
+  validateOtpConfig,
   password,
   objectId,
   digest,
@@ -38,17 +39,29 @@ import type { Purpose } from "../services/auth.service.js";
 const accepted = (res: Response, data: unknown) =>
   res.status(202).json({
     success: true,
-    message:
-      "If eligible, verification can continue. Development fake delivery only.",
+    message: "If eligible, verification can continue.",
     data,
   });
 
 function dummyChallenge() {
-  return {
+  const mode = validateOtpConfig();
+
+  const challenge = {
     challengeId: String(new mongoose.Types.ObjectId()),
     otpExpiresAt: new Date(Date.now() + 5 * 60 * 1000),
-    delivery: "fake",
-    devOtp: randomInt(100_000, 1_000_000).toString(),
+  };
+
+  if (mode === "fake") {
+    return {
+      ...challenge,
+      delivery: "fake",
+      devOtp: randomInt(100_000, 1_000_000).toString(),
+    };
+  }
+
+  return {
+    ...challenge,
+    delivery: "whatsapp",
   };
 }
 

@@ -1,11 +1,12 @@
 import express from 'express';
 import mongoose from 'mongoose';
-import { ApiError, digest, errors, fakeMode } from './lib/core.js';
+import { ApiError, digest, errors, validateOtpConfig } from './lib/core.js';
 import { limit, publicUser } from './services/auth.service.js';
 import { Session } from './models/authState.model.js';
 import { User } from './models/user.model.js';
 import * as auth from './controllers/user.controller.js';
 import { getMovies } from "./controllers/movie.controller.js";
+
 import {
     saveMovie,
     getSavedMovies,
@@ -14,7 +15,7 @@ import {
 
 export function createApp() {
 
-  fakeMode();
+  validateOtpConfig();
 
   const app = express();
 
@@ -46,7 +47,7 @@ export function createApp() {
 
   app.get('/api/health', (_req, res) => {
     const connected = mongoose.connection.readyState === 1;
-    res.status(connected ? 200 : 503).json({ success: connected, data: { status: connected ? 'okay' : 'unavailable', otpMode: 'fake' } });
+    res.status(connected ? 200 : 503).json({ success: connected, data: { status: connected ? 'okay' : 'unavailable', otpMode: process.env.OTP_MODE } });
   });
 
    app.use('/api/auth', async (req, _res, next) => {

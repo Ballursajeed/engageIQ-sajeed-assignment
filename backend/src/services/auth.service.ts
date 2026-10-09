@@ -14,12 +14,15 @@ import {
 import {
   ApiError,
   digest,
-  fakeMode,
+  validateOtpConfig,
   otpHash,
   token,
 } from "../lib/core.js";
 
 export type Purpose = "signup" | "login" | "password-reset";
+
+import { sendWapixOtp } from "./wapix.service.js";
+
 
 const OTP_EXPIRY_MS = 5 * 60 * 1000;
 const SESSION_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000;
@@ -131,7 +134,7 @@ export async function issue(
   userId?: mongoose.Types.ObjectId,
   authVersion = 0,
 ) {
-  fakeMode();
+  const mode = validateOtpConfig();
 
   const challengeId = new mongoose.Types.ObjectId();
   const code = randomInt(100_000, 1_000_000).toString();
@@ -149,11 +152,7 @@ export async function issue(
           pendingSignupId: pendingId,
           userId,
           authVersion,
-          codeHash: otpHash(
-            String(challengeId),
-            purpose,
-            code,
-          ),
+          codeHash: otpHash(String(challengeId), purpose, code),
           expiresAt,
         },
       ],
@@ -161,13 +160,28 @@ export async function issue(
     );
   });
 
-  // This code is returned only by the guarded local fake-OTP mode.
-  // No SMS or WhatsApp message has been sent.
+  if (mode === "fake") {
+    return {
+      challengeId: String(challengeId),
+      otpExpiresAt: expiresAt,
+      delivery: "fake",
+      devOtp: code,
+    };
+  }
+
+  try {
+    // Outside the transaction: transaction retries must not resend OTPs.
+    await sendWapixOtp(phone, code);
+  } catch (error) {
+    // Invalidate this challenge if sending failed or was unconfirmed.
+    await OtpChallenge.deleteOne({ _id: challengeId });
+    throw error;
+  }
+
   return {
     challengeId: String(challengeId),
     otpExpiresAt: expiresAt,
-    delivery: "fake",
-    devOtp: code,
+    delivery: "whatsapp",
   };
 }
 
